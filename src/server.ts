@@ -18,6 +18,7 @@ import { detectProvider } from './review/runner.js'
 import { fingerprint } from './review/fingerprint.js'
 import { excludeFilesFromPatch } from './review/filterPatch.js'
 import { parseSelection } from './review/selection.js'
+import { normalizePerspectives } from './review/perspectives.js'
 import type { ReviewProvider } from './review/types.js'
 import { createGlabClient, GlabError, type GlabClient } from './gitlab/glab.js'
 import { getGitlabStatus, listMrs, parseMrListQuery, MrFetchError, MrNotFoundError, type GitlabStatus } from './gitlab/mr.js'
@@ -544,7 +545,7 @@ export function createApp(options: AppOptions) {
   })
 
   app.post('/api/review', async (c) => {
-    let body: { provider: string; mode?: string; source?: string; target?: string; iid?: unknown; exclude?: unknown; kind?: unknown; question?: unknown; selection?: unknown; withLocations?: unknown }
+    let body: { provider: string; mode?: string; source?: string; target?: string; iid?: unknown; exclude?: unknown; kind?: unknown; question?: unknown; selection?: unknown; withLocations?: unknown; perspectives?: unknown }
     try {
       body = await c.req.json()
     } catch {
@@ -563,6 +564,8 @@ export function createApp(options: AppOptions) {
     }
     const parsedSelection = kind === 'question' ? parseSelection(body.selection) : { ok: true as const, selection: undefined }
     if (!parsedSelection.ok) return c.json({ error: parsedSelection.error, message: parsedSelection.message }, 400)
+    const perspectives = kind === 'review' ? normalizePerspectives(body.perspectives) : []
+    if (!perspectives) return c.json({ error: 'invalid_perspective', message: '알 수 없는 리뷰 관점입니다' }, 400)
     let resolved: ResolvedComparison
     try {
       resolved = body.mode === 'mr'
@@ -582,6 +585,7 @@ export function createApp(options: AppOptions) {
       kind,
       question: kind === 'question' ? question : null,
       excluded: exclude,
+      perspectives,
       selection: parsedSelection.selection,
       withLocations: body.withLocations !== false,
       fingerprint: fingerprint(resolved),

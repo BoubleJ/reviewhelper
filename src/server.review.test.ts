@@ -174,6 +174,47 @@ describe('review API', () => {
     expect(store.load(repo, saved.key)?.messages[0].excluded).toEqual(['a.txt'])
   })
 
+  it('passes perspectives to the prompt and stores them', async () => {
+    let prompt = ''
+    const { app, repo, store } = setup(async (_p, _c, request) => {
+      prompt = request.prompt
+      return { answer: 's', locations: [] }
+    })
+    const { id } = await (await postReview(app, { perspectives: ['convention'] })).json()
+    await readSse(await app.request(`/api/review/${id}/events`))
+    expect(prompt).toContain('## 관점: 컨벤션과 하네스')
+    const saved = await (await app.request(`/api/review?${branchQuery}`)).json()
+    expect(saved.messages[0].perspectives).toEqual(['convention'])
+    expect(store.load(repo, saved.key)?.messages[0].perspectives).toEqual(['convention'])
+  })
+
+  it('rejects an unknown perspective', async () => {
+    const { app } = setup(async () => ({ answer: 's', locations: [] }))
+    const res = await postReview(app, { perspectives: ['nope'] })
+    expect(res.status).toBe(400)
+    expect((await res.json()).error).toBe('invalid_perspective')
+  })
+
+  it('ignores perspectives on a question', async () => {
+    let prompt = ''
+    const { app } = setup(async (_p, _c, request) => {
+      prompt = request.prompt
+      return { answer: 's', locations: [] }
+    })
+    const { id } = await (await postReview(app, { kind: 'question', question: '왜?', perspectives: ['convention'] })).json()
+    await readSse(await app.request(`/api/review/${id}/events`))
+    expect(prompt).toBe('왜?')
+    const saved = await (await app.request(`/api/review?${branchQuery}`)).json()
+    expect(saved.messages[0]).not.toHaveProperty('perspectives')
+  })
+
+  it('reports the perspectives of a running review', async () => {
+    const { app } = setup(() => new Promise(() => {}))
+    await postReview(app, { perspectives: ['convention'] })
+    const saved = await (await app.request(`/api/review?${branchQuery}`)).json()
+    expect(saved.running).toMatchObject({ kind: 'review', perspectives: ['convention'] })
+  })
+
   it('sends only the trimmed question, ignores exclude and stores the question', async () => {
     let received: { files: string[]; request: { prompt: string } } | undefined
     const { app, repo, store } = setup(async (_p, ctx, request) => {
