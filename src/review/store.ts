@@ -13,6 +13,7 @@ export interface ReviewMessage {
   question: string | null
   fingerprint: string
   excluded?: string[]
+  perspectives?: string[]
   selection?: CodeSelection
   result: ReviewResult
 }

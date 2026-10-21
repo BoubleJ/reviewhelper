@@ -48,6 +48,28 @@ describe('ReviewJobs', () => {
     expect(jobs.runningFor('/repo', 'k')).toBeNull()
   })
 
+  it('puts the perspective sections in the prompt and stores the ids on the message', async () => {
+    const store = newStore()
+    const { run, calls } = deferredRun()
+    const jobs = new ReviewJobs(store, run)
+    const id = jobs.start({ ...review, perspectives: ['convention'] })
+    expect(calls[0].request.prompt).toContain('## 관점: 컨벤션과 하네스')
+    expect(jobs.runningFor('/repo', 'k')).toMatchObject({ id, kind: 'review', perspectives: ['convention'] })
+    calls[0].resolve(result)
+    await tick()
+    expect(store.load('/repo', 'k')!.messages[0].perspectives).toEqual(['convention'])
+  })
+
+  it('stores no perspectives field for a plain review', async () => {
+    const store = newStore()
+    const { run, calls } = deferredRun()
+    const jobs = new ReviewJobs(store, run)
+    jobs.start(review)
+    calls[0].resolve(result)
+    await tick()
+    expect(store.load('/repo', 'k')!.messages[0]).not.toHaveProperty('perspectives')
+  })
+
   it('sends only the question and resumes the saved session', async () => {
     const store = newStore()
     store.append('/repo', 'k', { provider: 'claude', providerLabel: 'Claude Code', sessionId: 's-1', message: { id: 'm1', createdAt: 1, kind: 'review', question: null, fingerprint: 'fp', result } })

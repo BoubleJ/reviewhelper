@@ -47,6 +47,12 @@ describe('ReviewStore', () => {
     expect(store.load('/other', key)).toBeNull()
   })
 
+  it('reads a version 2 file without perspectives as it is', () => {
+    const store = new ReviewStore(mkdtempSync(join(tmpdir(), 'diffx-reviews-')))
+    store.append('/repo', key, appendInput(message('m1')))
+    expect(store.load('/repo', key)!.messages[0]).not.toHaveProperty('perspectives')
+  })
+
   it('append reads the file again so a removed message stays removed', () => {
     const store = new ReviewStore(mkdtempSync(join(tmpdir(), 'diffx-reviews-')))
     store.append('/repo', key, appendInput(message('m1')))
