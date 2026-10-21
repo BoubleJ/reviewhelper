@@ -30,6 +30,7 @@ export interface ReviewMessage {
   question: string | null
   fingerprint: string
   excluded?: string[]
+  perspectives?: string[]
   selection?: CodeSelection
   result: { answer: string; locations: ReviewLocation[] }
   stale: boolean
@@ -39,6 +40,7 @@ export interface PendingQuestion {
   kind: MessageKind
   question: string | null
   excluded?: string[]
+  perspectives?: string[]
   selection?: CodeSelection
   withLocations?: boolean
 }
@@ -52,7 +54,7 @@ export interface SavedConversation {
   key: string
   sessionId: string | null
   messages: ReviewMessage[]
-  running: { id: string; provider: ProviderId; startedAt: number; kind: MessageKind; question: string | null; selection?: CodeSelection | null } | null
+  running: { id: string; provider: ProviderId; startedAt: number; kind: MessageKind; question: string | null; perspectives?: string[]; selection?: CodeSelection | null } | null
 }
 
 export async function fetchProviders(fetchFn: typeof fetch = fetch): Promise<ProviderInfo[]> {
@@ -140,8 +142,8 @@ export function useReview(params: URLSearchParams | null, key: string | null) {
 
   useEffect(() => {
     if (!isFetching && saved?.running && saved.key === key && jobRef.current?.id !== saved.running.id) {
-      const { id, startedAt, kind, question, selection } = saved.running
-      attach(id, startedAt, { kind, question, ...(selection ? { selection } : {}) }, true)
+      const { id, startedAt, kind, question, perspectives, selection } = saved.running
+      attach(id, startedAt, { kind, question, ...(perspectives && perspectives.length > 0 ? { perspectives } : {}), ...(selection ? { selection } : {}) }, true)
     }
   }, [saved, key, isFetching, attach])
 
@@ -157,7 +159,7 @@ export function useReview(params: URLSearchParams | null, key: string | null) {
       const res = await fetch('/api/review', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ provider: 'claude', ...Object.fromEntries(params), kind: pending.kind, question: pending.question ?? '', exclude: pending.excluded ?? [], ...(pending.selection ? { selection: pending.selection } : {}), ...(pending.withLocations === false ? { withLocations: false } : {}) }),
+        body: JSON.stringify({ provider: 'claude', ...Object.fromEntries(params), kind: pending.kind, question: pending.question ?? '', exclude: pending.excluded ?? [], ...(pending.perspectives && pending.perspectives.length > 0 ? { perspectives: pending.perspectives } : {}), ...(pending.selection ? { selection: pending.selection } : {}), ...(pending.withLocations === false ? { withLocations: false } : {}) }),
       })
       const body = await res.json()
       if (keyRef.current !== startKey) return
@@ -176,7 +178,7 @@ export function useReview(params: URLSearchParams | null, key: string | null) {
   }, [params, attach])
 
   const ask = useCallback((question: string, selection?: CodeSelection, withLocations = true) => send({ kind: 'question', question, ...(selection ? { selection } : {}), withLocations }), [send])
-  const review = useCallback((exclude: string[]) => send({ kind: 'review', question: null, excluded: exclude }), [send])
+  const review = useCallback((exclude: string[], perspectives: string[]) => send({ kind: 'review', question: null, excluded: exclude, perspectives }), [send])
 
   const cancel = useCallback(async () => {
     const id = jobRef.current?.id
