@@ -5,6 +5,14 @@ export function perspectiveLabels(ids: string[], all: ReviewPerspective[] = REVI
   return all.filter((p) => ids.includes(p.id)).map((p) => p.label)
 }
 
+export function toggleChecked(ids: string[], id: string): string[] {
+  return ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]
+}
+
+export function orderedIds(ids: string[], all: ReviewPerspective[] = REVIEW_PERSPECTIVES): string[] {
+  return all.filter((p) => ids.includes(p.id)).map((p) => p.id)
+}
+
 export function perspectiveSummary(ids: string[], all: ReviewPerspective[] = REVIEW_PERSPECTIVES): string {
   const labels = perspectiveLabels(ids, all)
   if (labels.length === 0) return '기본'
@@ -47,11 +55,11 @@ export function ReviewScopeMenu({ selected, onApply, onRun, disabled }: ReviewSc
   }
 
   const toggle = (id: string) => {
-    setChecked((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
+    setChecked((prev) => toggleChecked(prev, id))
   }
 
   const apply = () => {
-    onApply(REVIEW_PERSPECTIVES.filter((p) => checked.includes(p.id)).map((p) => p.id))
+    onApply(orderedIds(checked))
     setOpen(false)
   }
 

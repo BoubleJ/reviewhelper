@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { ReviewScopeMenu, perspectiveSummary } from './ReviewScopeMenu'
+import { ReviewScopeMenu, perspectiveSummary, toggleChecked, orderedIds } from './ReviewScopeMenu'
 
 const three = [
   { id: 'a', label: 'A', instructions: '' },
@@ -26,6 +26,20 @@ describe('perspectiveSummary', () => {
 
   it('says 모두 only when three or more are defined and all are picked', () => {
     expect(perspectiveSummary(['a', 'b', 'c'], three)).toBe('관점 3개 모두')
+  })
+})
+
+describe('toggleChecked', () => {
+  it('adds an unchecked id and removes a checked one', () => {
+    expect(toggleChecked(['a'], 'b')).toEqual(['a', 'b'])
+    expect(toggleChecked(['a', 'b'], 'a')).toEqual(['b'])
+  })
+})
+
+describe('orderedIds', () => {
+  it('keeps only defined ids in the defined order', () => {
+    expect(orderedIds(['c', 'x', 'a'], four)).toEqual(['a', 'c'])
+    expect(orderedIds([], four)).toEqual([])
   })
 })
 
