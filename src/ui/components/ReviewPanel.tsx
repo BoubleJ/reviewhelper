@@ -5,6 +5,7 @@ import { AnswerMarkdown } from './AnswerMarkdown'
 import { LocationItem } from './LocationItem'
 import type { CodeSelection } from '../../review/types'
 import { formatSelectionLocation } from '../selection'
+import { ReviewScopeMenu, perspectiveLabels } from './ReviewScopeMenu'
 
 interface ReviewPanelProps {
   provider: ProviderInfo | undefined
@@ -13,6 +14,8 @@ interface ReviewPanelProps {
   onAsk: (question: string) => void
   withLocations: boolean
   onWithLocationsChange: (value: boolean) => void
+  perspectives: string[]
+  onPerspectivesChange: (ids: string[]) => void
   onReview: () => void
   onCancel: () => void
   onRemove: (id: string) => void
@@ -35,7 +38,11 @@ function errorText(state: Extract<ReviewState, { status: 'error' }>, provider: P
   return state.message
 }
 
-export function QuestionCard({ kind, question, excluded, selection, onRemove }: { kind: MessageKind; question: string | null; excluded?: string[]; selection?: CodeSelection; onRemove?: () => void }) {
+export function QuestionCard({ kind, question, excluded, perspectives, selection, onRemove }: { kind: MessageKind; question: string | null; excluded?: string[]; perspectives?: string[]; selection?: CodeSelection; onRemove?: () => void }) {
+  const meta = [
+    ...perspectiveLabels(perspectives ?? []),
+    ...(excluded && excluded.length > 0 ? [`제외한 파일 ${excluded.length}개를 빼고 리뷰`] : []),
+  ].join(' · ')
   return (
     <div className="review-question">
       {selection && (
@@ -45,7 +52,7 @@ export function QuestionCard({ kind, question, excluded, selection, onRemove }: 
         </details>
       )}
       <div className="review-question-text">{kind === 'review' ? '전체 리뷰' : question}</div>
-      {excluded && excluded.length > 0 && <div className="review-panel-meta">제외한 파일 {excluded.length}개를 빼고 리뷰</div>}
+      {meta && <div className="review-panel-meta">{meta}</div>}
       {onRemove && (
         <button className="review-question-remove" onClick={onRemove} title="삭제" aria-label="삭제">
           <X size={14} />
@@ -75,7 +82,7 @@ const AnswerCard = memo(function AnswerCard({ message, onOpenLocation }: { messa
 })
 
 export function ReviewPanel(props: ReviewPanelProps) {
-  const { provider, messages, state, onAsk, withLocations, onWithLocationsChange, onReview, onCancel, onRemove, onNewConversation, onOpenLocation } = props
+  const { provider, messages, state, onAsk, withLocations, onWithLocationsChange, perspectives, onPerspectivesChange, onReview, onCancel, onRemove, onNewConversation, onOpenLocation } = props
   const [input, setInput] = useState('')
   const inputRef = useRef(input)
   inputRef.current = input
@@ -117,11 +124,11 @@ export function ReviewPanel(props: ReviewPanelProps) {
       <div className="review-panel-list" ref={listRef}>
         {messages.map((m) => (
           <Fragment key={m.id}>
-            <QuestionCard kind={m.kind} question={m.question} excluded={m.excluded} selection={m.selection} onRemove={() => onRemove(m.id)} />
+            <QuestionCard kind={m.kind} question={m.question} excluded={m.excluded} perspectives={m.perspectives} selection={m.selection} onRemove={() => onRemove(m.id)} />
             <AnswerCard message={m} onOpenLocation={onOpenLocation} />
           </Fragment>
         ))}
-        {pending && <QuestionCard kind={pending.kind} question={pending.question} excluded={pending.excluded} selection={pending.selection} />}
+        {pending && <QuestionCard kind={pending.kind} question={pending.question} excluded={pending.excluded} perspectives={pending.perspectives} selection={pending.selection} />}
         {state.status === 'running' && (
           <div className="review-panel-status">
             <div>{state.progress ?? '답변을 준비하는 중'}</div>
@@ -170,7 +177,7 @@ export function ReviewPanel(props: ReviewPanelProps) {
             <button className="btn btn-sm" onClick={onCancel}>취소</button>
           ) : (
             <div className="review-panel-actions">
-              <button className="btn btn-sm" onClick={onReview} disabled={!canSend}>전체 리뷰</button>
+              <ReviewScopeMenu selected={perspectives} onApply={onPerspectivesChange} onRun={onReview} disabled={!canSend} />
               <button className="btn btn-primary btn-sm" onClick={send} disabled={!canSend || !input.trim()}>보내기</button>
             </div>
           )}

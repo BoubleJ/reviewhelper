@@ -41,6 +41,7 @@ import { loadReviewPanel, saveReviewPanel, togglePanel, openExploreTab, REVIEW_P
 import { comparisonParams, loadComparison, saveComparison, reconcileComparison, comparisonForMode, comparisonFromKey, type Comparison } from './comparison'
 import { SelectionAsk } from './components/SelectionAsk'
 import { loadWithLocations, saveWithLocations } from './locationsStorage'
+import { loadPerspectives, savePerspectives } from './reviewPerspectivesStorage'
 import type { CodeSelection } from '../review/types'
 
 function useWindowSize({ factor }: { factor: number }) {
@@ -184,6 +185,11 @@ export function App() {
   const handleWithLocationsChange = useCallback((value: boolean) => {
     setWithLocations(value)
     saveWithLocations(value)
+  }, [])
+  const [perspectives, setPerspectives] = useState(loadPerspectives)
+  const handlePerspectivesChange = useCallback((ids: string[]) => {
+    setPerspectives(ids)
+    savePerspectives(ids)
   }, [])
   const handleAsk = useCallback((question: string) => {
     void review.ask(question, undefined, withLocations)
@@ -683,7 +689,9 @@ export function App() {
                       onAsk={handleAsk}
                       withLocations={withLocations}
                       onWithLocationsChange={handleWithLocationsChange}
-                      onReview={() => review.review(excludedInDiff)}
+                      perspectives={perspectives}
+                      onPerspectivesChange={handlePerspectivesChange}
+                      onReview={() => review.review(excludedInDiff, perspectives)}
                       onCancel={review.cancel}
                       onRemove={review.removeMessage}
                       onNewConversation={review.newConversation}
