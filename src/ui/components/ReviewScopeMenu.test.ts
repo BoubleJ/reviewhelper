@@ -51,4 +51,11 @@ describe('ReviewScopeMenu', () => {
     expect(html).toContain('▴')
     expect(html).not.toContain('review-scope-menu')
   })
+
+  it('marks the caret button as opening a dialog it controls', () => {
+    const html = renderToStaticMarkup(createElement(ReviewScopeMenu, { selected: [], onApply: () => {}, onRun: () => {}, disabled: false }))
+    expect(html).toContain('aria-haspopup="dialog"')
+    expect(html).toContain('aria-expanded="false"')
+    expect(html).toMatch(/aria-controls="[^"]+"/)
+  })
 })

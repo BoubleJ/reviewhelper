@@ -1764,6 +1764,8 @@ body {
 }
 
 .review-scope {
+    --review-scope-caret-width: 24px;
+    --review-scope-arrow-size: 10px;
     position: relative;
     display: inline-flex;
 }
@@ -1787,7 +1789,9 @@ body {
 }
 
 .review-scope-caret {
-    padding: 4px 7px;
+    justify-content: center;
+    width: var(--review-scope-caret-width);
+    padding: 4px 0;
     border-left: none;
     border-top-left-radius: 0;
     border-bottom-left-radius: 0;
@@ -1809,10 +1813,10 @@ body {
 .review-scope-menu::after {
     content: "";
     position: absolute;
-    right: 9px;
-    bottom: -6px;
-    width: 10px;
-    height: 10px;
+    right: calc((var(--review-scope-caret-width) - var(--review-scope-arrow-size)) / 2 - 1px);
+    bottom: calc(var(--review-scope-arrow-size) / -2 - 1px);
+    width: var(--review-scope-arrow-size);
+    height: var(--review-scope-arrow-size);
     background: var(--bg);
     border-right: 1px solid var(--border);
     border-bottom: 1px solid var(--border);
