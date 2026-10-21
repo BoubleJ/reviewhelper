@@ -1,4 +1,5 @@
 import type { CodeSelection, ReviewContext } from './types.js'
+import type { ReviewPerspective } from './perspectives.js'
 
 export const MAX_PATCH_CHARS = 200_000
 
@@ -33,7 +34,22 @@ export function buildSystemPrompt(ctx: ReviewContext): string {
   ].join('\n')
 }
 
-export function buildReviewPrompt(ctx: ReviewContext): string {
+function answerGuide(perspectives: ReviewPerspective[]): string[] {
+  if (perspectives.length === 0) {
+    return [
+      '- 버그, 보안 문제, 잘못된 동작, 누락된 예외 처리를 우선 찾으세요. 취향 차이인 스타일 지적은 하지 마세요.',
+      '- answer에는 무엇을 바꿨고 머지 전에 확인할 점이 무엇인지 쓰세요.',
+    ]
+  }
+  const headings = perspectives.map((p) => `\`## ${p.label}\``).join(', ')
+  return [`- 아래 관점으로 리뷰하세요. answer는 관점마다 ${headings} 소제목을 두고, 그 아래 각 관점의 항목을 ### 소제목으로 쓰세요.`]
+}
+
+function perspectiveSections(perspectives: ReviewPerspective[]): string[] {
+  return perspectives.flatMap((p) => [`## 관점: ${p.label}`, p.instructions, ''])
+}
+
+export function buildReviewPrompt(ctx: ReviewContext, perspectives: ReviewPerspective[] = []): string {
   const patchSection = ctx.patch.length > MAX_PATCH_CHARS
     ? `diff가 커서 본문을 싣지 않았습니다. 파일별 diff는 \`${diffCommand(ctx)}\`로 직접 확인하세요.`
     : ['```diff', ctx.patch, '```'].join('\n')
@@ -41,12 +57,12 @@ export function buildReviewPrompt(ctx: ReviewContext): string {
   return [
     '아래 변경사항을 리뷰하세요.',
     '',
-    '- 버그, 보안 문제, 잘못된 동작, 누락된 예외 처리를 우선 찾으세요. 취향 차이인 스타일 지적은 하지 마세요.',
-    '- answer에는 무엇을 바꿨고 머지 전에 확인할 점이 무엇인지 쓰세요.',
+    ...answerGuide(perspectives),
     '- 지적할 코드 위치는 locations에 넣으세요. 지적할 것이 없으면 locations를 빈 배열로 두세요.',
     `- 파일별 변경 내용은 \`${diffCommand(ctx)}\`로 확인할 수 있습니다.`,
     '- 변경된 코드를 호출하는 곳이나 관련 타입 정의가 필요하면 저장소 파일을 찾아 읽으세요.',
     '',
+    ...perspectiveSections(perspectives),
     '## 변경된 파일',
     ...ctx.files.map((f) => `- ${f}`),
     '',

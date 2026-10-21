@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { buildSystemPrompt, buildReviewPrompt, buildQuestionPrompt, MAX_PATCH_CHARS, NO_LOCATIONS } from './prompt'
 import type { ReviewContext } from './types'
+import { REVIEW_PERSPECTIVES } from './perspectives'
 
 const base: ReviewContext = {
   repoPath: '/repo',
@@ -50,6 +51,24 @@ describe('buildReviewPrompt', () => {
     expect(p).toContain('git diff abc123 feature/x -- <경로>')
     expect(p).not.toContain('시니어 코드 리뷰어')
     expect(p).not.toContain('```json')
+  })
+
+  it('keeps the default prompt when no perspective is given', () => {
+    expect(buildReviewPrompt(base, [])).toBe(buildReviewPrompt(base))
+  })
+
+  it('replaces the default instructions with a section per perspective', () => {
+    const convention = REVIEW_PERSPECTIVES.find((p) => p.id === 'convention')!
+    const p = buildReviewPrompt(base, [convention])
+    expect(p).toContain('## 관점: 컨벤션과 하네스')
+    expect(p).toContain(convention.instructions)
+    expect(p).toContain('`## 컨벤션과 하네스`')
+    expect(p).not.toContain('버그, 보안 문제')
+    expect(p).not.toContain('머지 전에 확인할 점')
+    expect(p).toContain('- src/a.ts')
+    expect(p).toContain('+hello')
+    expect(p).toContain('locations')
+    expect(p).toContain('git diff abc123 feature/x -- <경로>')
   })
 
   it('omits the patch body when it is too large', () => {
